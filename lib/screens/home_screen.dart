@@ -7,7 +7,6 @@ import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/kecamatan_card.dart';
 import '../widgets/watermark_footer.dart';
-import 'detail_screen.dart';
 import 'moderation_panel_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -86,14 +85,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _toggleFavorite(String id) async {
     await _favService.toggleFavorite(id);
     await _loadFavorites();
-  }
-
-  Future<void> _openDetail(KecamatanModel data) async {
-    await _favService.addToHistory(data.id);
-    if (!mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => DetailScreen(data: data)),
-    );
   }
 
   Future<List<KecamatanModel>> _resolveIds(List<String> ids) async {
@@ -337,7 +328,6 @@ class _HomeScreenState extends State<HomeScreen> {
         return KecamatanCard(
           data: item,
           isFavorite: _favoriteIds.contains(item.id),
-          onTap: () => _openDetail(item),
           onToggleFavorite: () => _toggleFavorite(item.id),
           awalTerbuka: index == 0,
         );
