@@ -16,9 +16,15 @@ import 'compass_fullscreen_screen.dart';
 import 'prayer_settings_sheet.dart';
 import 'usulkan_koreksi_screen.dart';
 
+/// Bagian mana di DetailScreen yang harus langsung terlihat saat halaman
+/// dibuka -- dipakai oleh 4 tombol menu cepat di KecamatanCard supaya
+/// pengguna langsung diarahkan ke bagian yang relevan, bukan selalu dari atas.
+enum DetailSection { geografis, kiblat, waktuShalat }
+
 class DetailScreen extends StatefulWidget {
   final KecamatanModel data;
-  const DetailScreen({super.key, required this.data});
+  final DetailSection? initialSection;
+  const DetailScreen({super.key, required this.data, this.initialSection});
 
   @override
   State<DetailScreen> createState() => _DetailScreenState();
@@ -30,10 +36,36 @@ class _DetailScreenState extends State<DetailScreen> {
   bool _loadingShalat = true;
   DateTime _tanggalDipilih = DateTime.now();
 
+  final _keyGeografis = GlobalKey();
+  final _keyKiblat = GlobalKey();
+  final _keyWaktuShalat = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     _hitungWaktuShalat();
+    if (widget.initialSection != null) {
+      // Tunggu satu frame supaya layout selesai dulu sebelum scroll --
+      // GlobalKey.currentContext masih null sebelum widget ter-render.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollKeSection(widget.initialSection!));
+    }
+  }
+
+  void _scrollKeSection(DetailSection section) {
+    final key = switch (section) {
+      DetailSection.geografis => _keyGeografis,
+      DetailSection.kiblat => _keyKiblat,
+      DetailSection.waktuShalat => _keyWaktuShalat,
+    };
+    final context = key.currentContext;
+    if (context != null) {
+      Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+        alignment: 0.05, // sedikit dari atas, bukan pas mepet tepi layar
+      );
+    }
   }
 
   Future<void> _pilihTanggal() async {
@@ -172,6 +204,7 @@ class _DetailScreenState extends State<DetailScreen> {
 
                   // === Rincian Geografis ===
                   _blokCard(
+                    sectionKey: _keyGeografis,
                     title: 'Rincian Geografis',
                     icon: Icons.public_rounded,
                     children: [
@@ -243,6 +276,7 @@ class _DetailScreenState extends State<DetailScreen> {
 
                   // === Arah Kiblat ===
                   _blokCard(
+                    sectionKey: _keyKiblat,
                     title: 'Arah Kiblat',
                     icon: Icons.explore_outlined,
                     badge: 'Terverifikasi',
@@ -314,6 +348,7 @@ class _DetailScreenState extends State<DetailScreen> {
 
                   // === Waktu Shalat ===
                   _blokCard(
+                    sectionKey: _keyWaktuShalat,
                     title: 'Waktu Shalat',
                     icon: Icons.access_time_rounded,
                     trailing: _buildHijriLabel(),
@@ -407,10 +442,12 @@ class _DetailScreenState extends State<DetailScreen> {
     required List<Widget> children,
     String? badge,
     Widget? trailing,
+    Key? sectionKey,
   }) {
     return Builder(builder: (context) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
       return Card(
+        key: sectionKey,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/kecamatan_model.dart';
+import '../services/favorite_service.dart';
 import '../theme/app_theme.dart';
+import '../screens/detail_screen.dart';
+import '../screens/add_point_screen.dart';
 
 class KecamatanCard extends StatefulWidget {
   final KecamatanModel data;
   final bool isFavorite;
-  final VoidCallback onTap; // "Hitung Waktu" -> buka DetailScreen
   final VoidCallback onToggleFavorite;
   final bool awalTerbuka;
 
@@ -14,7 +16,6 @@ class KecamatanCard extends StatefulWidget {
     super.key,
     required this.data,
     required this.isFavorite,
-    required this.onTap,
     required this.onToggleFavorite,
     this.awalTerbuka = false,
   });
@@ -25,6 +26,7 @@ class KecamatanCard extends StatefulWidget {
 
 class _KecamatanCardState extends State<KecamatanCard> {
   late bool _terbuka;
+  final _favService = FavoriteService();
 
   @override
   void initState() {
@@ -36,6 +38,20 @@ class _KecamatanCardState extends State<KecamatanCard> {
     Clipboard.setData(ClipboardData(text: widget.data.toClipboardText()));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Data disalin ke clipboard'), duration: Duration(seconds: 1)),
+    );
+  }
+
+  Future<void> _bukaDetail(BuildContext context, DetailSection section) async {
+    await _favService.addToHistory(widget.data.id);
+    if (!context.mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => DetailScreen(data: widget.data, initialSection: section)),
+    );
+  }
+
+  void _bukaTambahTitik(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => AddPointScreen(induk: widget.data)),
     );
   }
 
@@ -129,32 +145,74 @@ class _KecamatanCardState extends State<KecamatanCard> {
                         ),
                       ],
                       const SizedBox(height: 12),
+
                       Row(
                         children: [
                           Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: widget.onTap,
-                              icon: const Icon(Icons.calculate_rounded, size: 17),
-                              label: const Text('Lihat Jadwal Sholat'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.emerald,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 11),
-                              ),
+                            child: _menuButton(
+                              context, isDark,
+                              icon: Icons.public_rounded,
+                              label: 'Rincian\nGeografis',
+                              onTap: () => _bukaDetail(context, DetailSection.geografis),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          _iconButtonKotak(
-                            icon: Icons.copy_rounded,
-                            onTap: () => _copyData(context),
-                            isDark: isDark,
+                          Expanded(
+                            child: _menuButton(
+                              context, isDark,
+                              icon: Icons.explore_rounded,
+                              label: 'Arah\nKiblat',
+                              onTap: () => _bukaDetail(context, DetailSection.kiblat),
+                            ),
                           ),
-                          const SizedBox(width: 6),
-                          _iconButtonKotak(
-                            icon: widget.isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                            iconColor: widget.isFavorite ? Colors.redAccent : null,
-                            onTap: widget.onToggleFavorite,
-                            isDark: isDark,
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _menuButton(
+                              context, isDark,
+                              icon: Icons.access_time_rounded,
+                              label: 'Jadwal\nWaktu Sholat',
+                              isPrimary: true,
+                              onTap: () => _bukaDetail(context, DetailSection.waktuShalat),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: data.isReferensi
+                                ? const SizedBox.shrink()
+                                : _menuButton(
+                                    context, isDark,
+                                    icon: Icons.add_location_alt_rounded,
+                                    label: 'Tambah Titik\ndi Sini',
+                                    onTap: () => _bukaTambahTitik(context),
+                                  ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _iconButtonKotak(
+                              icon: Icons.copy_rounded,
+                              label: 'Salin Data',
+                              onTap: () => _copyData(context),
+                              isDark: isDark,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _iconButtonKotak(
+                              icon: widget.isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                              label: widget.isFavorite ? 'Favorit' : 'Simpan Favorit',
+                              iconColor: widget.isFavorite ? Colors.redAccent : null,
+                              onTap: widget.onToggleFavorite,
+                              isDark: isDark,
+                            ),
                           ),
                         ],
                       ),
@@ -164,6 +222,45 @@ class _KecamatanCardState extends State<KecamatanCard> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _menuButton(
+    BuildContext context,
+    bool isDark, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool isPrimary = false,
+  }) {
+    final bgColor = isPrimary
+        ? AppColors.emerald
+        : (isDark ? Colors.white.withOpacity(0.06) : AppColors.emerald.withOpacity(0.06));
+    final fgColor = isPrimary ? Colors.white : AppColors.emerald;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(12),
+          border: isPrimary ? null : Border.all(color: AppColors.emerald.withOpacity(0.25)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: fgColor),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: AppTypography.bodyMd(color: fgColor).copyWith(fontSize: 11, fontWeight: FontWeight.w600, height: 1.2),
+            ),
+          ],
         ),
       ),
     );
@@ -229,17 +326,30 @@ class _KecamatanCardState extends State<KecamatanCard> {
     );
   }
 
-  Widget _iconButtonKotak({required IconData icon, required VoidCallback onTap, required bool isDark, Color? iconColor}) {
+  Widget _iconButtonKotak({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    required bool isDark,
+    Color? iconColor,
+  }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.all(11),
+        padding: const EdgeInsets.symmetric(vertical: 9),
         decoration: BoxDecoration(
           border: Border.all(color: Colors.grey.shade400),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, size: 18, color: iconColor ?? (isDark ? AppColors.textDark : AppColors.textLight)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 17, color: iconColor ?? (isDark ? AppColors.textDark : AppColors.textLight)),
+            const SizedBox(height: 3),
+            Text(label, style: AppTypography.bodyMd(color: iconColor ?? Colors.grey.shade600).copyWith(fontSize: 10.5)),
+          ],
+        ),
       ),
     );
   }
