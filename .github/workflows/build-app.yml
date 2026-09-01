@@ -38,12 +38,17 @@ jobs:
       - name: Install pycryptodome
         run: pip install pycryptodome
 
-      - name: Generate folder platform Android (jika belum ada)
-        # Job ini HANYA build Android -- folder ios/ sengaja TIDAK digenerate
-        # di sini (job build-ios yang urus itu) supaya tidak buang waktu CI.
+      - name: Generate folder platform Android & iOS (jika belum ada)
+        # PENTING: folder ios/ WAJIB ada juga di sini meski job ini hanya
+        # build APK -- flutter_launcher_icons dikonfigurasi untuk android+ios
+        # sekaligus di pubspec.yaml, dan akan CRASH (bukan sekadar warning)
+        # kalau salah satu folder platform itu tidak ada saat generate ikon.
         run: |
           if [ ! -d "android" ]; then
             flutter create --platforms=android --org com.lflirboyo .
+          fi
+          if [ ! -d "ios" ]; then
+            flutter create --platforms=ios --org com.lflirboyo .
           fi
 
       - name: Ganti nama aplikasi (label) di AndroidManifest.xml
@@ -205,13 +210,20 @@ jobs:
       - name: Install pycryptodome
         run: pip install pycryptodome
 
-      - name: Generate folder platform iOS (jika belum ada)
+      - name: Generate folder platform iOS & Android (jika belum ada)
         # PENTING: --org HARUS sama dengan job Android (com.lflirboyo), kalau
         # tidak, bundle identifier iOS & applicationId Android akan berbeda
         # tanpa sengaja (identitas aplikasi jadi tidak konsisten lintas platform).
+        #
+        # Folder android/ JUGA WAJIB ada di sini meski job ini hanya build
+        # iOS -- flutter_launcher_icons dikonfigurasi android+ios sekaligus
+        # di pubspec.yaml, dan CRASH kalau salah satu folder platform hilang.
         run: |
           if [ ! -d "ios" ]; then
             flutter create --platforms=ios --org com.lflirboyo .
+          fi
+          if [ ! -d "android" ]; then
+            flutter create --platforms=android --org com.lflirboyo .
           fi
 
       - name: Tambahkan izin lokasi ke Info.plist (wajib untuk geolocator & flutter_compass)
@@ -288,10 +300,20 @@ jobs:
           channel: "stable"
           cache: true
 
-      - name: Generate folder platform Web (jika belum ada)
+      - name: Generate folder platform Web, Android & iOS (jika belum ada)
+        # Folder android/ & ios/ JUGA WAJIB ada meski job ini hanya build web
+        # -- flutter_launcher_icons dikonfigurasi android+ios+web sekaligus
+        # di pubspec.yaml, dan CRASH kalau folder android/ios hilang (web
+        # sendiri kalau hilang cuma dapat warning, tapi android/ios FATAL).
         run: |
           if [ ! -d "web" ]; then
             flutter create --platforms=web --org com.lflirboyo .
+          fi
+          if [ ! -d "android" ]; then
+            flutter create --platforms=android --org com.lflirboyo .
+          fi
+          if [ ! -d "ios" ]; then
+            flutter create --platforms=ios --org com.lflirboyo .
           fi
 
       - name: Ambil dependency
