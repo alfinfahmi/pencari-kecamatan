@@ -36,6 +36,11 @@ class _AddPointScreenState extends State<AddPointScreen> {
       final pos = await Geolocator.getCurrentPosition();
       _latController.text = pos.latitude.toStringAsFixed(7);
       _lngController.text = pos.longitude.toStringAsFixed(7);
+      // Elevasi diisi otomatis dari GPS, tapi field tetap bisa diedit manual
+      // (GPS altitude akurasinya kasar, jadi pengguna perlu bisa mengoreksi).
+      if (pos.altitude != 0) {
+        _elevasiController.text = pos.altitude.round().toString();
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
