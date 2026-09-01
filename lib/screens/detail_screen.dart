@@ -28,11 +28,40 @@ class _DetailScreenState extends State<DetailScreen> {
   final _prayerSettings = PrayerSettingsService();
   List<WaktuShalatEntry>? _waktuShalat;
   bool _loadingShalat = true;
+  DateTime _tanggalDipilih = DateTime.now();
 
   @override
   void initState() {
     super.initState();
     _hitungWaktuShalat();
+  }
+
+  Future<void> _pilihTanggal() async {
+    final hasil = await showDatePicker(
+      context: context,
+      initialDate: _tanggalDipilih,
+      firstDate: DateTime(1900),
+      lastDate: DateTime(2100),
+      helpText: 'Pilih Tanggal Waktu Shalat',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+                  primary: AppColors.emerald,
+                  onPrimary: Colors.white,
+                ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (hasil != null) {
+      setState(() {
+        _tanggalDipilih = hasil;
+        _loadingShalat = true;
+      });
+      _hitungWaktuShalat();
+    }
   }
 
   Future<void> _hitungWaktuShalat() async {
@@ -47,7 +76,7 @@ class _DetailScreenState extends State<DetailScreen> {
     final sudutSubuh = await _prayerSettings.getSudutSubuh();
 
     final hasil = HisabService.hitung(
-      tanggal: DateTime.now(),
+      tanggal: _tanggalDipilih,
       lat: data.lat,
       lng: data.lng,
       elevasiM: (data.elevasiM ?? 0).toDouble(),
@@ -289,6 +318,29 @@ class _DetailScreenState extends State<DetailScreen> {
                     icon: Icons.access_time_rounded,
                     trailing: _buildHijriLabel(),
                     children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: InkWell(
+                          onTap: _pilihTanggal,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                Icon(Icons.event_rounded, size: 15, color: AppColors.emerald),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    _formatTanggalHariIndonesia(_tanggalDipilih),
+                                    style: AppTypography.bodyLg(color: AppColors.emerald).copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                                Icon(Icons.edit_calendar_outlined, size: 16, color: Colors.grey.shade500),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                       if (_loadingShalat)
                         const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
                       else if (_waktuShalat == null)
@@ -386,11 +438,30 @@ class _DetailScreenState extends State<DetailScreen> {
     });
   }
 
+  /// Format tanggal ala Indonesia dengan "Ahad" (bukan "Minggu") untuk hari
+  /// pertama pekan -- ditulis manual (bukan intl DateFormat locale 'id_ID')
+  /// supaya tidak bergantung pada inisialisasi locale data yang belum
+  /// pernah dipanggil di main.dart (menghindari risiko crash locale).
+  static const _namaHari = {
+    1: 'Senin', 2: 'Selasa', 3: 'Rabu', 4: 'Kamis',
+    5: 'Jumat', 6: 'Sabtu', 7: 'Ahad',
+  };
+  static const _namaBulanMasehi = {
+    1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni',
+    7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember',
+  };
+
+  String _formatTanggalHariIndonesia(DateTime tanggal) {
+    final hari = _namaHari[tanggal.weekday]!;
+    final bulan = _namaBulanMasehi[tanggal.month]!;
+    return '$hari, ${tanggal.day} $bulan ${tanggal.year}';
+  }
+
   Widget _buildHijriLabel() {
     final data = widget.data;
     if (data.utcOffset == null) return const SizedBox.shrink();
     final hijri = HijriService.instance.konversi(
-      DateTime.now(),
+      _tanggalDipilih,
       lat: data.lat,
       lng: data.lng,
       utcOffset: data.utcOffset!,
