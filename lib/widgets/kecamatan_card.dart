@@ -135,7 +135,7 @@ class _KecamatanCardState extends State<KecamatanCard> {
                             child: ElevatedButton.icon(
                               onPressed: widget.onTap,
                               icon: const Icon(Icons.calculate_rounded, size: 17),
-                              label: const Text('Hitung Waktu'),
+                              label: const Text('Lihat Jadwal Sholat'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.emerald,
                                 foregroundColor: Colors.white,
